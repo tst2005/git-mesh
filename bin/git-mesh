@@ -46,6 +46,11 @@ git_mesh_config() {
 	esac
 }
 
+git_mesh_rconfig() {
+        local target="$1";shift;
+        ssh -n "$target" 'cd '"$(pwd)"' && git-mesh config' "$@"
+}
+
 git_mesh_setup() {
 	local meshdir="$(pwd)"
 	for peer in $MESH_PEERS; do
@@ -125,6 +130,7 @@ git_mesh() {
 
 	case "$1" in
 		(config)	subcmd git_mesh_ "$@" ;;
+		(rconfig)	subcmd git_mesh_ "$@" ;;
 		(peers)		subcmd git_mesh_ "$@" ;;
 		(setup)		subcmd git_mesh_ "$@" ;;
 		(fetch)		subcmd git_mesh_ "$@" ;;
