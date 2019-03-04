@@ -51,15 +51,42 @@ git_mesh_rconfig() {
         ssh -n "$target" 'cd '"$(pwd)"' && git-mesh config' "$@"
 }
 
+#git_mesh_setup_all() {
+#	for peer in $(git_mesh_config_getpeers); do
+#		[ "$peer" != "$me" ] || continue
+#		git_mesh_setup "$peer"
+#	done
+#}
+
 git_mesh_setup() {
-	local meshdir="$(pwd)"
-	for peer in $(git_mesh_config_getpeers); do
-		[ "$peer" != "$me" ] || continue 
-		if ! git remote | grep -q "$peer"; then
-			echo "Add $peer : ssh://${peer}${meshdir}"
-			git remote add $peer ssh://${peer}${meshdir}
-		fi
+	if [ $# -eq 0 ]; then
+		echo >&2 "specify a target or --all"
+		return 1
+	fi
+	local all=false
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			(-a|--all) all=true;;
+			(--) shift;break;;
+			(-*) echo >&2 "Invalid setup option"; return 1;;
+			(*) break;;
+		esac
+		shift
 	done
+	local meshdir="$(pwd)"
+	if $all; then
+		for peer in $(git_mesh_config_getpeers); do
+			[ "$peer" != "$me" ] || continue
+			git_mesh_setup "$peer"
+		done
+	else
+		local peer="$1";shift
+		[ "$peer" != "$me" ] || return
+		if ! git remote | grep -q -- "$peer"; then
+			echo "Add $peer : ssh://${peer}${meshdir}"
+			git remote add $peer "ssh://${peer}${meshdir}"
+		fi
+	fi
 }
 git_mesh_peers() {
 	[ $# -gt 0 ] || set -- "list";
@@ -79,53 +106,87 @@ git_mesh_peers() {
 		;;
 	esac
 }
-git_mesh_peer() {
-	[ $# -gt 0 ] || set -- "help";
-	case "$1" in
-		(help)		stop "Usage: git mesh peer [add|remove|help]" 0 ;;
-		(add)		stop NYI ;;
-		(remove)	stop NYI ;;
-		(*)		stop SYNTAX_ERROR_HELP ;;
-	esac
-}
+#git_mesh_peer() {
+#	[ $# -gt 0 ] || set -- "help";
+#	case "$1" in
+#		(help)		stop "Usage: git mesh peer [add|remove|help]" 0 ;;
+#		(add)		stop NYI ;;
+#		(remove)	stop NYI ;;
+#		(*)		stop SYNTAX_ERROR_HELP ;;
+#	esac
+#}
 
-git_mesh_fetch_all() {
-	for peer in $(git_mesh_peers); do
-		subcmd git_mesh_ fetch $peer
-	done
-}
+#git_mesh_fetch_all() {
+#	for peer in $(git_mesh_peers); do
+#		subcmd git_mesh_ fetch $peer
+#	done
+#}
 git_mesh_fetch() {
-	git fetch "$@"
+	local all=false
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			(-a|--all) all=true;;
+			(--) shift;break;;
+			(-*) echo >&2 "Invalid fetch option"; return 1;;
+			(*) break;;
+		esac
+		shift
+	done
+	if ${all}; then
+		for peer in $(git_mesh_peers); do
+			git fetch "$peer"
+		done
+	else
+		git fetch "$1"
+	fi
 }
 git_mesh_rfetch() {
 	local target="$1";shift;
 	ssh -n "$target" 'cd '"$(pwd)"' && ./git-mesh.sh fetch '"$me"
 }
+
 #git_mesh_update_master() {
 #	: git co master && git rebase foo/master && git co $localme
 #}
-
+git_mesh_help() {
+	if [ $# -eq 0 ]; then
+		echo >&2 'Usage: git-mesh [config|rconfig|peers|setup|fetch|rfetch] ...'
+	else
+		case "$1" in
+			(config|rconfig|peers|setup|fetch|rfetch|fetch_all)
+				local a="$1";shift;
+				"git_mesh_${a}_help" "$@"
+			;;
+			(*) echo >&2 ERROR; return 1;;
+		esac
+	fi
+}
 
 git_mesh() {
 	MESH_ENABLED="$(git config --local --bool --get mesh.enabled)"
 	MESH_ENABLED="${MESH_ENABLED:-false}"
 
-
 	#me="$MESH_ME"
 	#[ -n "$me" ] || me=$(uname -n)
 	#echo "# me=$me"
-	echo "# MESH_ENABLED=$MESH_ENABLED"
-	echo "# MESH_PEERS=$MESH_PEERS"
+	#echo "# MESH_ENABLED=$MESH_ENABLED"
+	#echo "# MESH_PEERS=$MESH_PEERS"
 
 	if ! $MESH_ENABLED; then
 		case "$1" in
 			(config) ;;
 			(help) ;;
-			(*) stop "MESH is not enabled" ;;
+			(*) stop "MESH is not enabled in this repository" ;;
 		esac
+	else
+		local peers="$(git_mesh_config_getpeers)"
+		if [ -z "$peers" ]; then
+			echo >&2 "WARNING: there is no peers configured"
+			echo >&2 "Try git-mesh config setpeers 'server1 server2 server3 ...'"
+		fi
 	fi
 
-	MESH_PEERS="$(git config --get mesh.peers)"
+	#MESH_PEERS="$(git_mesh_config_getpeers)"
 	#[ -n "$MESH_PEERS" ] || stop "ERROR: MESH_PEERS undefined" 1
 
 	case "$1" in
