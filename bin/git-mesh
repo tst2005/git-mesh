@@ -53,7 +53,7 @@ git_mesh_rconfig() {
 
 git_mesh_setup() {
 	local meshdir="$(pwd)"
-	for peer in $MESH_PEERS; do
+	for peer in $(git_mesh_config_getpeers); do
 		[ "$peer" != "$me" ] || continue 
 		if ! git remote | grep -q "$peer"; then
 			echo "Add $peer : ssh://${peer}${meshdir}"
