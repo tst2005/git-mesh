@@ -47,9 +47,11 @@ git_mesh_config() {
 }
 
 git_mesh_setup() {
+	local meshdir="$(pwd)"
 	for peer in $MESH_PEERS; do
 		[ "$peer" != "$me" ] || continue 
 		if ! git remote | grep -q "$peer"; then
+			echo "Add $peer : ssh://${peer}${meshdir}"
 			git remote add $peer ssh://${peer}${meshdir}
 		fi
 	done
@@ -58,8 +60,9 @@ git_mesh_peers() {
 	[ $# -gt 0 ] || set -- "list";
 	case "$1" in
 		(list)
-			git remote | while read -r peer; do                   
-		                [ "$peer" != "$me" ] || continue
+			for peer in $(git_mesh_config_getpeers); do
+			#git remote | while read -r peer; do
+				[ "$peer" != "$me" ] || continue
 				printf %s\\n "$peer"
 			done
 		;;
@@ -82,7 +85,7 @@ git_mesh_peer() {
 }
 
 git_mesh_fetch_all() {
-	for peer in $(peers); do
+	for peer in $(git_mesh_peers); do
 		subcmd git_mesh_ fetch $peer
 	done
 }
