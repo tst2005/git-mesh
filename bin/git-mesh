@@ -102,9 +102,6 @@ git_mesh() {
 	MESH_ENABLED="$(git config --local --bool --get mesh.enabled)"
 	MESH_ENABLED="${MESH_ENABLED:-false}"
 
-	#MESH_PEERS="$(git config --get mesh.peers)"
-
-	#[ -n "$MESH_PEERS" ] || stop "ERROR: MESH_PEERS undefined" 1
 
 	#me="$MESH_ME"
 	#[ -n "$me" ] || me=$(uname -n)
@@ -120,13 +117,16 @@ git_mesh() {
 		esac
 	fi
 
+	MESH_PEERS="$(git config --get mesh.peers)"
+	#[ -n "$MESH_PEERS" ] || stop "ERROR: MESH_PEERS undefined" 1
+
 	case "$1" in
 		(config)	subcmd git_mesh_ "$@" ;;
+		(peers)		subcmd git_mesh_ "$@" ;;
 		(setup)		subcmd git_mesh_ "$@" ;;
 		(fetch)		subcmd git_mesh_ "$@" ;;
 		(fetch_all)	subcmd git_mesh_ "$@" ;;
 		(rfetch)	subcmd git_mesh_ "$@" ;;
-		(peers)		subcmd git_mesh_ "$@" ;;
 		(*) echo "USAGE";exit 1;;
 	esac
 }
